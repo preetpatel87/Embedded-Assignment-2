@@ -19,7 +19,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "usb_host.h"
+
+//Importing math.h for acceleration magnitude calculation
 #include <math.h>
+//Importing lcd.h for displaying output on lcd display
 #include "lcd.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -70,14 +73,21 @@ void MX_USB_HOST_Process(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+//Position values used for tracking location movement
 double x_position = 0;
 double y_position= 0;
 double z_position = 0;
+//Magnitude of acceleration calculated
 double magnitude= 0;
+//Difference between current and last magnitude of acceleration
 double change_in_magnitude = 0;
+//Magnitude of the last calculated acceleration
 double last_magnitude = 0;
+//Current step count
 int steps_counter =-1;
+//Threshold to detect movement
 int pedometer_threshold = 1000;
+//Array used to interact and extract position change value from accelerometer
 int16_t accelVals[3];
 
 /* USER CODE END 0 */
@@ -102,6 +112,8 @@ int main(void)
   /* USER CODE END Init */
 
   /* Configure the system clock */
+
+  //Comment out clock configuration to access all accelerometer
   //SystemClock_Config();
 
 /* Configure the peripherals common clocks */
@@ -114,60 +126,85 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
 
+  //Initializing accelerometer
   BSP_ACCELERO_Init();
   /* USER CODE BEGIN 2 */
 
+  //Setting up and configuring LCD (per Lab 5) 
   Lcd_PortType ports[] = { GPIOD, GPIOD, GPIOD, GPIOD };
   // Lcd_PinType pins[] = {D4_Pin, D5_Pin, D6_Pin, D7_Pin};
-    Lcd_PinType pins[] = {D4_Pin, D5_Pin, D6_Pin, D7_Pin};
-    Lcd_HandleTypeDef lcd;
+  Lcd_PinType pins[] = {D4_Pin, D5_Pin, D6_Pin, D7_Pin};
+  Lcd_HandleTypeDef lcd;
   // Lcd_create(ports, pins, RS_GPIO_Port, RS_Pin, EN_GPIO_Port, EN_Pin, LCD_4_BIT_MODE);
-    lcd = Lcd_create(ports, pins, GPIOB, RS_Pin, GPIOB, EN_Pin, LCD_4_BIT_MODE);
+  lcd = Lcd_create(ports, pins, GPIOB, RS_Pin, GPIOB, EN_Pin, LCD_4_BIT_MODE);
 
-    Lcd_cursor(&lcd, 0,0);
-      Lcd_string(&lcd, "Welcome ");
-      Lcd_cursor(&lcd, 1,0);
-      Lcd_string(&lcd, "User ");
+  //Writing welcome message on the LCD display
+  //Lcd_cursor points to location to write from in LCD
+  Lcd_cursor(&lcd, 0,0);
+  //Lcd_string prints a string on the LCD display
+  Lcd_string(&lcd, "Welcome ");
+  Lcd_cursor(&lcd, 1,0);
+  Lcd_string(&lcd, "User ");
+  //Delay to display welcome message
+  HAL_Delay(2000);
 
-      HAL_Delay(2000);
-      Lcd_clear(&lcd);
-      Lcd_cursor(&lcd, 0,0);
-		Lcd_string(&lcd, "Ready ");
-		Lcd_cursor(&lcd, 1,0);
-		Lcd_string(&lcd, "Steps: ");
-		Lcd_cursor(&lcd, 1, 8);
-		Lcd_int(&lcd, 0);
+  //Setting up pedometer display
+  //Lcd_clear to clear LCD display
+  Lcd_clear(&lcd);
+  Lcd_cursor(&lcd, 0,0);
+  //Using row 1 to display status 
+	Lcd_string(&lcd, "Ready ");
+	Lcd_cursor(&lcd, 1,0);
+  //Using row 2 to display step count
+	Lcd_string(&lcd, "Steps: ");
+	Lcd_cursor(&lcd, 1, 8);
+  //Lcd_int prints a number on the LCD display
+  //Initializing step count value
+	Lcd_int(&lcd, 0);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  //Constantly polling accelerometer to detect any steps taken by user
   while (1)
   {
     /* USER CODE END WHILE */
+    //Delay to display walking status
 	  HAL_Delay(1000);
+    //Initializing the status to stopped for no movement detected
 	  Lcd_cursor(&lcd, 0,0);
 	  Lcd_string(&lcd, "Stopped ");
-	        BSP_ACCELERO_GetXYZ(accelVals);
-	        x_position = accelVals[0];
-	        HAL_Delay(1);
-	        y_position = accelVals[1];
-	        HAL_Delay(1);
-	        z_position = accelVals[2];
-	        HAL_Delay(1);
-	        magnitude = sqrt( ((x_position)*(x_position)) + ((y_position)*(y_position)) + ((z_position)*(z_position)));
-			  HAL_Delay(100);
-			  change_in_magnitude = magnitude - last_magnitude;
-			  last_magnitude = magnitude;
+    //Fetching change in each direction from accelerometer
+    //Initializing position values
+    BSP_ACCELERO_GetXYZ(accelVals);
+    x_position = accelVals[0];
+    HAL_Delay(1);
+    y_position = accelVals[1];
+    HAL_Delay(1);
+    z_position = accelVals[2];
+    HAL_Delay(1);
 
-			  if(change_in_magnitude > pedometer_threshold)
-			  {
-				  steps_counter++;
-				  Lcd_cursor(&lcd,1, 8);
-				  Lcd_int(&lcd,steps_counter);
-				  Lcd_cursor(&lcd, 0,0);
-				  Lcd_string(&lcd, "Walking ");
-			  }
+    //Calculating the magnitude of acceleration from position values
+    magnitude = sqrt( ((x_position)*(x_position)) + ((y_position)*(y_position)) + ((z_position)*(z_position)));
+		HAL_Delay(100);
+    //Calculating change in magnitude from current magnitude - last magnitude
+		change_in_magnitude = magnitude - last_magnitude;
+    //Updating last magnitude value
+		last_magnitude = magnitude;
+
+    //Checking if change in magnitude is greater than the threshold to detect movement
+    if(change_in_magnitude > pedometer_threshold)
+    {
+      //Increment step count
+      steps_counter++;
+      //Updating step count on LCD display
+      Lcd_cursor(&lcd,1, 8);
+      Lcd_int(&lcd,steps_counter);
+      //Updating status on LCD display
+      Lcd_cursor(&lcd, 0,0);
+      Lcd_string(&lcd, "Walking ");
+    }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
